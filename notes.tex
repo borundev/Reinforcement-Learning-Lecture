@@ -1,0 +1,585 @@
+\documentclass[11pt,a4paper]{article}
+\pdfoutput=1
+
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amssymb}
+%\usepackage{epstopdf}
+%\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{subfigure}
+\usepackage{listings}    
+\usepackage{bbm}
+\usepackage{cancel}
+\usepackage{relsize}
+%\usepackage{listings}
+\usepackage{xcolor}
+%\usepackage{tcolorbox}
+\usepackage[most]{tcolorbox}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+
+%%%%%%% Borun's commands %%%%%%%%%%%%%%
+
+\newcommand\be{\begin{equation}}
+\newcommand\bea{\begin{eqnarray}}
+\newcommand\ee{\end{equation}}
+\newcommand\eea{\end{eqnarray}}
+\newcommand\Regge{\alpha'}
+\newcommand{\bdm}{\begin{displaymath}}
+\newcommand{\edm}{\end{displaymath}}
+\newcommand{\nn}{\nonumber \\}
+\newcommand{\f}[2]{\frac{#1}{#2}}
+\newcommand{\bref}[1]{(\ref{#1})}
+\newcommand\h{\frac{1}{2}}
+\newcommand{\ket}[1]{|#1 \rangle}
+\newcommand{\bra}[1]{\langle #1 |}
+\newcommand{\e}[1]{\mathbb E[#1]}
+\newcommand{\todo}[1]{{\color{cyan}{TODO: #1}}}
+
+
+
+
+\title{Reinforcement Learning}
+\author{Borun D. Chowdhury}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+Imagine a problem where we have an {\em agent} that interacts with and {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? The goal itself may have the reward spread over the entire journey (think stock returns coming from readjusting a portfolio) or have just one reward in the end (checkmate!).
+
+We could assign a {\em numerical reward} to the actual goal (if it already is a numerical value we can keep it as is or modulate it) and simply ask the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the reward.  We could also make additional rewards along the way to goad the agent into {\em what we believe} is an optimal path to the ultimate reward.
+
+Let's make this concrete. Then a sequence of states and actions are written as 
+\be
+(S_0,A_0,\cancel{R_0})),(S_1,A_1,R_1),(S_2,A_2,R_2) \dots (S_T,\cancel{A_T},R_T)
+\ee
+Here, we start in a state $S_0$ (which comprises of the {\em state of the environement} as well as the {\em internal state of the agent} and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
+
+This process is often made more complicated in practice because of inherent stochasticity in the transition of states after an action is taken as well as in the rewards generated. So in the notation above
+\begin{itemize}
+\item The game may start in a state $S_0 \sim p(S_0)$
+\item After the agent taken the action $A_t$ the next state may be sample $S_{t+1} \sim p(S_{t+1}|S_t,A_t)$
+\item The reward is sampled $R_{t+1} \sim p(R_{t+1}|S_t,A_t)$
+\end{itemize}
+
+Note we have given in to the Markovian fantasy above in that we assume the next step depends only on the current state. In theory, this is not a big assumption, as one can always {\em define} the state to contain all the past information that is required. In practice though it is a strong assumption that is frequently made without much though largely due to the complexity involved in the alternative assumption.
+
+\section{Bandits}
+
+\subsection{Value Based Models}
+
+Suppose there is a process where one can choose among a set of actions $\{a\}$ that give rewards $R$ then it makes sense to take actions that maximize the reward
+\bea
+q_*(a) = \e{R|A=a}
+\eea
+which is the expectation of the reward given the action chose is $a$.
+
+We want to 
+\begin{itemize}
+\item Find the true values for each action
+\be
+Q_t(a) := \frac{\sum_{i=1}^{t-1} R_i \delta_{A_i,a}}{\sum_{i=1}^{t-1}  \delta_{A_i,1}} \label{rewardrunningmean}
+\ee
+\item Take the action with the max value
+\be
+A_t := \underset{a}{\text{argmax}} ~ Q_t(a)
+\ee
+\end{itemize}
+
+However, the tricky part is to do them together. For this we can 
+\begin{itemize}
+\item Take an $\epsilon$-greedy approach where we exploit with probability $1-\epsilon$ and explore with probability $\epsilon$,
+\item Use the upper-confidence-bound method (\todo{find the math behind this})
+\be
+A_t := \underset{a}{\text{argmax}} ~ \left[ Q_t(a) + c \sqrt{\frac{\ln(t)}{N_t(a)}}\right]
+\ee
+\end{itemize}
+
+The computation of the running mean for rewards eqn \ref{rewardrunningmean} per action naively requires keeping track of all rewards but we can instead do
+\be
+Q_{n+1} = Q_n + \frac{1}{n} [R_n - Q_n]
+\ee
+Furthermore if the problem is non-stationary we can instead have a fixed parameter $\alpha$ to exponential weight the prior reward
+\bea
+Q_{n+1} &=& Q_n + \alpha [R_n - Q_n] \nn
+&=& (1-\alpha) Q_n + \alpha R_n \nn
+&=& \alpha R_n + (1-\alpha) \alpha R_{n-1} + (1-\alpha)^2 \alpha R_{n-2}  + \dots \nn
+&=& (1-\alpha)^n Q_1 + \alpha \sum_{i=1}^n (1-\alpha)^{n-i} R_i
+\eea
+
+\section{Markov Reward Process}
+
+A Markov Reward Process is a process where one starts off in a state and at each time makes a transition to another state (possibly the same) while earning some rewards
+\be
+(S_0,\cancel{R_0}),(S_1,R_1), \dots
+\ee
+
+The probability to get to state $S_T$ at time step $T$ is
+\be
+p(S_T) = \sum_{S_0} p(S_T|S_0)p(S_0)
+\ee
+Usually the initial state is sharply peaked $p(S_0) = \delta_{S_0,s_0}$ for some $s_0$. We have
+\bea
+\sum_{S_T} p(S_T|S_0) &=& 1 \\
+p(S_T|S_0) &=& \sum_{S_t} p(S_T|S_t)p(S_t,S_0)
+\eea
+
+We then have
+\bea
+E[R_{t+1}|S_0] &=& \sum_{S_T,S_{t},R_{t+1}} R_{t+1} p(S_T,S_{t}) {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0) \nn
+&=& \sum_{S_{t},R_{t+1}} R_{t+1} {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0)
+\eea
+The states after time $t$ do not matter for the expectation value of $R_T$ due to causality.
+
+
+
+\section{Markov Decision Process}
+
+Where Markov Decision Process also involves and agent choosing actions at each step
+\be
+(S_0,A_0,\cancel{R_0}),(S_1,A_1,R_1), \dots
+\ee
+
+Note that
+\bea
+p(S_T|S_0) &=& \sum_{S_t,S_0} p(S_T|S_t) p(S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t) &=& 1
+\eea
+Furthermore,
+\bea
+p(S_T|S_0) &=& \sum_{S_t,A_t} p(S_T|S_t,A_t) \pi(A_t|S_t) p (S_t|S_0) \\
+\sum_{S_T} p(S_T|S_t,A_t) &=& 1
+\eea
+
+Thus we have
+\bea
+\mathbb E[R_{t+1}] &=&  \sum_{S_0,S_T,S_t,A_t} R_{t+1} p(S_T|S_t,A_t) {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)} \nn
+&=& \sum_{S_0,S_t,A_t} R_{t+1} {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)}
+\eea
+Thus the states and actions after $t$ do not matter.
+
+We can break the "propagator" into individual time steps so
+\bea
+\mathbb E[ R_{t+1}] &=& \sum_{R_{t+1}, S_0, S_1, \dots S_T, A_0,A_1, A_{T-1}} R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \qquad \times {\color{olive} \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_{t},A_{t}) } \nn
+&& \qquad \qquad {\color{olive} \dots} \nn
+&& \qquad \times {\color{olive} \pi(A_{T-1}|S_{T-1}) p(S_{T-1}|S_{T-2},A_{T-2}) } \nn
+&& \qquad \times {\color{olive} p(S_T)} \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})} \nn
+&=& \sum_{R_{t+1}, S_0, S_1, \dots S_t, A_0,A_1, A_{t}} R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})}
+\eea
+Here the olive colored terms are redundant in that the sum on them can be done directly and will give one. 
+
+We define a discounted (stochastic) reward as
+\bea
+G_t &:=& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
+&=& R_{t+1} + \gamma G_{t+1}
+\eea
+
+The state value is defined as
+\bea
+v_\pi(s) &=& \mathbb E_\pi[G_0|S_0=s] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s]
+\eea
+Thus, we see why we had the term $\color{blue}{p(S_0)}$ in blue as to compute state values we take this probability to be sharply peaked while summing over all subsequent paths.
+
+Similarly, the action-value is defined as 
+\bea
+q_\pi(s,a) &=& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s,A_0=a]
+\eea
+and we see why we had the term $\color{red}{\pi(A_0|S_0)}$ in red as in this case this term is also sharply peaked and we only sum over subsequent steps. 
+
+Since the process is Markovian the transition probabilities are independent of the time step. We define
+\bea
+p(s'|s,a) = p(S_{t+1}=s'|S_t=s,A_t=a)
+\eea
+and likewise other expressions.
+
+We then get
+\bea
+v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
+&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{G_{t+1}|S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s',\pi}|S_t=s;\pi}  \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{v_\pi(s') |S_t=s;\pi} \nn
+&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a} + \gamma \e{v_\pi(s') |S_t=s,a} \Bigg] \pi(a|s) \nn
+&=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
+\eea
+
+Similarly, we get
+\bea
+q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a';\pi}|S_t=s, A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a;\pi} \nn
+&=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
+&=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
+\eea
+
+From these we see
+\bea
+v_\pi(s) &=&  \e{G_t|S_t=s;\pi} \nn
+&=& \e{\e{G_t|S_t=s,A_t=a;\pi} } \nn
+&=& \e{q_\pi(s,a)} \nn
+&=& \sum_a q_\pi(s,a) \pi(a|s)
+\eea
+Further we have
+\bea
+q_\pi(s,a) = \sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a)
+\eea
+
+
+We get for the optimal policy
+\bea
+v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg]  \\
+q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
+\eea
+
+
+
+\section{Monte Carlo}
+
+\subsection{The idea}
+
+When we do not know the dynamics of the system (i.e. $p(s'|s,a)$ and/or $p(r|s,a)$ then we can sample whole episodes several times to get
+\be
+v_\pi(s), q_\pi(s,a)
+\ee 
+by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converse but proving theorems is easier for the former.
+
+\subsection{Importance Sampling}
+
+We have the expectation of a reward under policy $\pi$ 
+\bea
+\mathbb E_{\pi}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
+&& \times \left( \prod_{n=0}^{t-1} \pi(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
+&&\times \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} 
+\eea
+and under a different policy we have
+\bea
+\mathbb E_{b}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
+&& \times \left( \prod_{n=0}^{t-1} b(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
+&&\times \color{red}{b(A_0|S_0)} \color{blue}{p(S_0)} 
+\eea
+So clearly we have
+\bea
+\mathbb E_{\pi}[R_{t+1}] &=& \mathbb E_{b}[ \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
+&=&  \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
+\eea
+Where in the second line we have written the importance sampling contribution from the full path but the part in olive does not matter as it is after the reward. 
+
+More concretely we have
+\bea
+ \mathbb E_\pi[R_{t+1} | S_0=s] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}|S_0 = s] \nn
+\eea
+and
+\bea
+\mathbb E_\pi[R_{t+1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{t+1}|S_0 = s,A_0=a] \nn
+\eea
+
+
+In particular
+\bea
+\mathbb E_\pi[R_{1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   R_{1}|S_0 = s,A_0=a] \nn
+\mathbb E_\pi[R_{2} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=2}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{2}|S_0 = s,A_0=a] \nn
+\mathbb E_\pi[R_{3} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=3}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{3}|S_0 = s,A_0=a] \nn
+\eea
+
+So for instance we can have
+\bea
+\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{black} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   (R_{1}+ \gamma R_2 + \gamma^2 R_3)|S_0 = s,A_0=a] \nn
+\eea
+But this adds extra noise when sampling because of parts that average to 1 but have variance. So instead one ought to take
+\bea
+\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b} [R_1 + \gamma  \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_2 + \gamma^2  \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_3 |S_0 = s,A_0=a] \nn
+\eea
+
+If we take a full episode
+
+\subsection{Taking Averages}
+
+\subsubsection{Ordinary Importance Sampling}
+
+For Monte Carlo we can talk about two kinds of averages across episodes. The first is {\em ordinary importance sampling} 
+\bea
+V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{|\mathcal T(s)|}
+\eea
+The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$.  If we are discussing first visit MC then this would be restricted to first visit. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
+
+To show how this works we consider an example. We show how the values are updated for first visit and every visit MC for the first two episodes. 
+\begin{itemize}
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+We have
+\bea
+G_0 &=& R_1 + \gamma R_2 + \gamma^2 R_3 \\
+G_1 &=&  R_2 + \gamma R_3 \\
+G_2 &=& R_3 
+\eea
+
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& G_0 \rho_{1,\infty} \nn
+&=&  (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& G_1 \rho_{2,\infty}  \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{G_2 + G_0 \rho_{1,\infty}}{2} \nn
+&=&  \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
+q(s',a') &=& G_1 \rho_{2,\infty}  \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
+\eea
+\end{itemize}
+\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\bea
+G_0 &=& R_4 + \gamma R_5 + \gamma^2 R_6 \\
+G_1 &=& R_5 + \gamma R_6 \\
+G_2 &=& R_6
+\eea
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{2} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{2} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + (R_5+ \gamma R_6)  \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{3} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+\subsubsection{Ordinary Importance Sampling: Per-importance importance sampling}
+
+At this point it makes sense to {\em re-write the above after dropping the importance sampling ratios after the reward} as they do not make an effect on expectation but increase variance.
+ 
+\begin{itemize}
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)}
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} +R_3}{2} \\
+q(s',a') &=& R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)}
+\eea
+\end{itemize}
+\item  Episode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=&R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} \\
+q(s',a') &=& \frac{R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)} + R_4 + \gamma R_5 \frac{\pi(a'|s') }{b(a'|s') } + \gamma^2 R_6 \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{2} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=&  \frac{R_1 + \gamma R_2 \frac{\pi(a'|s')}{b(a'|s')} +\gamma^2 R_3 \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)} +R_3}{2} \\
+q(s',a') &=& \frac{R_2 + \gamma R_3 \frac{\pi(a|s)}{b(a|s)} + R_4 + \gamma R_5 \frac{\pi(a'|s') }{b(a'|s') } + \gamma^2 R_6 \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + R_5+ \gamma R_6 \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{3} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+
+\subsubsection{Weighted Importance Sampling}
+
+\bea
+V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} }
+\eea
+The way to interpret this is that $\mathcal T(s)$ is the union of all time steps at which the state was $s$.  If we are discussing first visit MC then this would be restricted to first visit. T(t) is the first time of termination following $t$. $G_t$ are returns pertaining to time step $t$ and $ \rho_{t:T(t)-1}$ are the importance sampling ratios.
+
+To show how this works we consider an example. We show how the values are updated for first visit and every visit MC for the first two episodes. 
+\begin{itemize}
+\item Episode 1: $\{(s,a),(s',a',R_1),(s,a,R_2),(s_t,R_3\}$ 
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3) \\
+q(s',a') &=& (R_2 + \gamma R_3)
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{\frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+1} \\
+q(s',a') &=& (R_2 + \gamma R_3) 
+\eea
+\end{itemize}
+\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\begin{itemize}
+\item First Visit
+\bea
+q(s,a) &=& (R_1 + \gamma R_2+\gamma^2 R_3)  \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}}{ \frac{\pi(a|s)}{b(a|s)} + \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)}} \\
+q(s,\bar a) &=& R_6
+\eea
+\item Every Visit
+\bea
+q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+R_3}{\frac{\pi(a'|s') \pi(a|s)}{b(a'|s') b(a|s)}+1} \\
+q(s',a') &=& \frac{(R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)} + (R_4 + \gamma R_5 + \gamma^2 R_6) \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} + (R_5+ \gamma R_6)  \frac{ \pi(\bar a|s)}{ b(\bar a|s)}}{\frac{\pi(a|s)}{b(a|s)} + \frac{\pi(a'|s') \pi(\bar a|s)}{b(a'|s') b(\bar a|s)} +\frac{ \pi(\bar a|s)}{ b(\bar a|s)}} \\
+q(s,\bar a) &=& R_6
+\eea
+\end{itemize}
+\end{itemize}
+
+\subsection{Algorithms}
+
+\subsubsection{Every Visit Algorithms}
+Here is the algorithm for on-policy MC prediction.
+
+\begin{tcolorbox}[enhanced,title=On-policy prediction]
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $\pi$ generate the sequence $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$
+\end{tcolorbox}
+
+The algorithm for off-policy oridinary importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} $W=1$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
+    \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+
+The algorithm for off-policy weighted importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy weighted importance sampling prediction]
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G,W=0$ \\
+  \phantom{abcd} $W=1$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+W}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += W$ \\
+    \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+The algorithm for off-policy per decision oridinary importance sampling MC prediction is
+
+\begin{tcolorbox}[enhanced,title=Off-policy per decision ordinary importance sampling prediction]
+Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
+Loop over episodes: \\
+ \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
+ \phantom{abcd} $G=0$ \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
+  \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) + G}{C(S_t,A_t)+1}$ \\
+    \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
+    \phantom{abcd}   \phantom{abcd}  $G*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
+\end{tcolorbox}
+
+\subsection{Example}
+
+
+Suppose we have a state $s$ and one terminal state $t$. There are only two actions left $L$ and right $R$. The left takes the agent to the terminal state with probability $q$ and return $1$. It takes the agent to the state $s$ with probability $1-q$. Suppose further the target policy has $\pi(L|s)=p$ and the exploration policy has $b(L|s)=\tilde p$. We evaluate the value and variance of the state under the first visit method. Then we have
+
+\bea
+\mathbb E_\pi[G_0] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+We also have
+\bea
+\mathbb E_\pi[G_0^2] &=& pq \sum_{k=0}^\infty (p (1-q))^k \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+
+If we compute this with importance sampling we get
+\bea
+\mathbb E_b[G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{k+1} \nn
+&=& \frac{pq}{1-p(1-q)}
+\eea
+which is the same as under the target policy.
+
+We also get
+\bea
+\mathbb E_b[\left(G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}\right)^2] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{2(k+1)} \nn
+&=& \frac{qp^2}{\tilde p} \sum_{k=0}^\infty \left( \frac{(1-q) p^2}{\tilde p}\right)^k
+\eea
+This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
+
+
+\appendix
+
+\section{Importance Sampling Example}
+Note that
+\bea
+v_\pi(s) = \mathbb E_b [ \rho_{t:T-1} G_t | S_t=s]
+\eea
+where $\rho_{t:T-1} = \prod_{k=t}^{T-1} \frac{\pi(A_k|S_k)}{b(A_k|S_k)}$ and
+\bea
+q_\pi(s,a) = \mathbb E_b [ \rho_{t+1:T-1} G_t | S_t=s, A_t=a]
+\eea
+
+
+Suppose we have a sequence $S_0,A_0,R_1,S_1,A_1,R_2,S_2,A_2,R_3,S_3$ where $S_0=S_2=s$ and $A_0=A_2=a$ and $S_1=s',A_1=a'$ then for ordinary importance sampling starting with $Q(S,A)=0$ we get
+\bea
+q(s,a) &=& \frac{G_2 + G_0 \rho_{1:2}}{2} \nn
+&=&  \frac{ R_3 + (R_1 + \gamma R_2 + \gamma^2 R_3) \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}}{2} \\
+q(s',a') &=& G_1 \rho_{2:2} \nn
+&=& (R_2 + \gamma R_3) \frac{\pi(A_2|S_2)}{b(A_2|S_2)}
+\eea
+whereas for weighted importance sampling we have
+
+\bea
+q(s,a) &=&  \frac{G_2 + G_0 \rho_{1:2}}{1+\rho_{1:2}} \nn
+&=&\frac{ R_3 + (R_1 + \gamma R_2 + \gamma^2 R_3) \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}}{1+\frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)}} \\
+q(s',a') &=& G_1 \nn
+&=& (R_2 + \gamma R_3)
+\eea
+
+Now note that because of causality we have
+\bea
+\mathbb E_b [ \rho_{t:T-1}R_{t+k} ] = \mathbb E_b [ \rho_{t:t+k-1}R_{t+k} ]
+\eea
+so we could also simply take
+
+\bea
+q(s,a) &=&  \frac{ R_3 + (R_1 + \gamma R_2 \frac{\pi(A_1|S_1)}{b(A_1|S_1)} + \gamma^2 R_3 \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)} ) }{2} \\
+q(s',a') &=& (R_2 + \gamma R_3 \frac{\pi(A_2|S_2)}{b(A_2|S_2)})
+\eea
+
+\end{document}
