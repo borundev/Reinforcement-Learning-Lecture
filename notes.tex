@@ -20,6 +20,17 @@
 \usepackage{xcolor}
 %\usepackage{tcolorbox}
 \usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{mathtools}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=blue,
+    pdftitle={Overleaf Example},
+    pdfpagemode=FullScreen,
+    }
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -54,6 +65,7 @@
 
 \begin{document}
 \maketitle
+\tableofcontents
 
 \section{Introduction}
 
@@ -63,7 +75,7 @@ We could assign a {\em numerical reward} to the actual goal (if it already is a 
 
 Let's make this concrete. Then a sequence of states and actions are written as 
 \be
-(S_0,A_0,\cancel{R_0})),(S_1,A_1,R_1),(S_2,A_2,R_2) \dots (S_T,\cancel{A_T},R_T)
+(S_0,A_0,\cancel{R_0})),(S_1,A_1,R_1),(S_2,A_2,R_2) \dots (S_T,\cancel{A_T},R_T) \label{MDP}
 \ee
 Here, we start in a state $S_0$ (which comprises of the {\em state of the environement} as well as the {\em internal state of the agent} and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
 
@@ -75,6 +87,130 @@ This process is often made more complicated in practice because of inherent stoc
 \end{itemize}
 
 Note we have given in to the Markovian fantasy above in that we assume the next step depends only on the current state. In theory, this is not a big assumption, as one can always {\em define} the state to contain all the past information that is required. In practice though it is a strong assumption that is frequently made without much though largely due to the complexity involved in the alternative assumption.
+
+Now with this Markovian fantasy the thing the agent needs to do at time $t$ is to decide what action to take in the state $S_t$. In order to do this the agent needs to have a {\em policy} from which actions are sampled $A_t \sim \pi(A_t|S_t)$. This may be a deterministic or stochastic policy. Now are come to the two main problems of Reinforcement Learning
+\begin{itemize}
+\item What are $p(R_{t+1} | S_t,A_t)$ and $p(S_{t+1}|S_t,A_t)$?
+\item What should $\pi(A_t|S_t)$ be?
+\end{itemize}
+
+The rest of the lecture will be  discussing how to solve these problems.
+
+\section{Markov Decision Processes}
+
+A MDP is a sequence of states, actions and rewards as shown in eqn \ref{MDP}. Note that
+\bea
+p(S_{t_2}|S_{t_1}) &=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) p(S_t,A_t|S_{t_1}) \\
+&=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) \pi(A_t|S_t) p(S_t|S_{t_1}) 
+\eea
+as long as $t_1 < t < t_2$.
+Now we see that
+\bea
+\mathbb E[R_{t+1}|\pi] &=& \sum_{R_{t+1}, S_{0:T} , A_{0:T-1}} R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \qquad \times {\color{olive} \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_{t},A_{t}) } \nn
+&& \qquad \qquad {\color{olive} \dots} \nn
+&& \qquad \times {\color{olive} \pi(A_{T-1}|S_{T-1}) p(S_{T-1}|S_{T-2},A_{T-2}) } \nn
+&& \qquad \times {\color{olive} p(S_T)} \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})} \nn
+&=& \sum_{R_{t+1}, S_{0:t} , A_{0:t}}  R_{t+1} \Bigg[ \nn
+&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
+&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
+&& \qquad \qquad \dots \nn
+&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
+&& \Bigg]  \nn
+&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})}
+\eea
+The actions taken and states coming  after the reward in question do not impact the expectation value. 
+
+So if the agent is about to decide which action to take at time $t$ they should only care about $\mathbb E[R_{t+k}]~\forall~k\ \ge 1$. We can then say that the agent ought to decide based on
+\be
+\sum_{k \ge 1} \mathbb E[R_{t+k}| \pi]
+\ee
+however if $k$ is unbounded then this function is unbounded. We thus define a stochastic reward as
+\bea
+G_t &\coloneqq& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
+&=& R_{t+1} + \gamma G_{t+1}
+\eea
+
+
+\subsection{Value Based RL}
+
+The state value is defined as
+\bea
+v_\pi(s) &=& \mathbb E_\pi[G_0|S_0=s] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s]
+\eea
+Thus, we see why we had the term $\color{blue}{p(S_0)}$ in blue as to compute state values we take this probability to be sharply peaked while summing over all subsequent paths.
+
+Similarly, the action-value is defined as 
+\bea
+q_\pi(s,a) &=& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
+&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s,A_0=a]
+\eea
+and we see why we had the term $\color{red}{\pi(A_0|S_0)}$ in red as in this case this term is also sharply peaked and we only sum over subsequent steps. 
+
+Since the process is Markovian the transition probabilities are independent of the time step. We define
+\bea
+p(s'|s,a) \coloneqq p(S_{t+1}=s'|S_t=s,A_t=a)
+\eea
+and likewise other expressions.
+
+Below we use
+\be
+\mathbb E[A] =\mathbb E[ \mathbb E[A|B] ]
+\ee
+extensively.
+
+We then get
+\bea
+v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
+&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{G_{t+1}|S_t=s;\pi} \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s',\pi}|S_t=s;\pi}  \nn
+&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{v_\pi(s') |S_t=s;\pi} \nn
+&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a} + \gamma \e{v_\pi(s') |S_t=s,a} \Bigg] \pi(a|s) \nn
+&=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
+\eea
+
+
+
+Similarly, we get
+\bea
+q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a';\pi}|S_t=s, A_t=a;\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a;\pi} \nn
+&=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
+&=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
+\eea
+
+From these we see
+\bea
+v_\pi(s) &=&  \e{G_t|S_t=s;\pi} \nn
+&=& \e{\e{G_t|S_t=s,A_t=a;\pi} } \nn
+&=& \e{q_\pi(s,a)} \nn
+&=& \sum_a q_\pi(s,a) \pi(a|s)
+\eea
+Further we have
+\bea
+q_\pi(s,a) = \sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a)
+\eea
+
+
+We get for the optimal policy
+\bea
+v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg]  \\
+q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
+\eea
+
+
+
+We define 
 
 \section{Bandits}
 
