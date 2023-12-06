@@ -678,6 +678,36 @@ We also get
 This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
 
 
+\section{Policy Gradient}
+
+
+Below we understand that $\pi(a|s)$ depends on $\theta$ parameterically.
+
+We then have
+\bea
+\partial_\theta v_\pi(s) &=& \partial_\theta \sum_a q_\pi(s,a) \pi(a|s) \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \sum_a \pi(a|s) \partial_\theta q_\pi(s,a) \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a)  + \sum_{a,s'} \pi(a|s) p(s'|s,a) \partial_\theta v_\pi(s') \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \sum_{s'} \partial_\theta v_\pi(s') p(s'|s)
+\eea
+Thus recursively we get
+\bea
+\partial_\theta v_\pi(s) &=& \sum_{x \in \mathcal S} p(x|s) \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \nn
+&=& \mathbb E_\pi \left[  \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \right] \nn
+&=& \mathbb E_\pi \left[ \sum_a \pi(a| x) \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a) \right] \nn
+&=& \mathbb E_\pi \left[ \mathbb E_a [ \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a)]  \right] \nn
+\eea
+
+
+\section{Explicit Policy Gradient}
+
+Recall we have
+\bea
+\mathbb E_\pi[ R_{t+1}] &=&  \sum_{R_{t+1},S_{0:T}, A_{0:T-1}} R_{t+1}  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \nn
+&=&  \sum_{R_{t+1},S_{0:T}, A_{0:T-1}} R_{t+1}  \prod_{t=0}^{t} p(S_{t+1}|S_t,A_t) 
+\eea
+
+
 \appendix
 
 \section{Importance Sampling Example}
