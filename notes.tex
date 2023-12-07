@@ -104,26 +104,15 @@ p(S_{t_2}|S_{t_1}) &=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) p(S_t,A_t|S_{t_1}) \\
 &=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) \pi(A_t|S_t) p(S_t|S_{t_1}) 
 \eea
 as long as $t_1 < t < t_2$.
-Now we see that
+
+
+More generally we can write the partition function
 \bea
-\mathbb E[R_{t+1}|\pi] &=& \sum_{R_{t+1}, S_{0:T} , A_{0:T-1}} R_{t+1} \Bigg[ \nn
-&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
-&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
-&& \qquad \qquad \dots \nn
-&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
-&& \qquad \times {\color{olive} \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_{t},A_{t}) } \nn
-&& \qquad \qquad {\color{olive} \dots} \nn
-&& \qquad \times {\color{olive} \pi(A_{T-1}|S_{T-1}) p(S_{T-1}|S_{T-2},A_{T-2}) } \nn
-&& \qquad \times {\color{olive} p(S_T)} \nn
-&& \Bigg]  \nn
-&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})} \nn
-&=& \sum_{R_{t+1}, S_{0:t} , A_{0:t}}  R_{t+1} \Bigg[ \nn
-&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
-&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
-&& \qquad \qquad \dots \nn
-&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
-&& \Bigg]  \nn
-&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})}
+Z_\pi = \sum_{S_{0:T}, A_{0:T-1}} \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)
+\eea
+\bea
+\mathbb E[R_{\tau+1}|\pi] &=&  \sum_{S_{0:T}, A_{0:T-1}}  R_{\tau+1} p(R_{t+1}|S_t,A_t) \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+&=& \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t)  p(S_0)
 \eea
 The actions taken and states coming  after the reward in question do not impact the expectation value. 
 
@@ -131,7 +120,7 @@ So if the agent is about to decide which action to take at time $t$ they should 
 \be
 \sum_{k \ge 1} \mathbb E[R_{t+k}| \pi]
 \ee
-however if $k$ is unbounded then this function is unbounded. We thus define a stochastic reward as
+however if $k$ is unbounded then this function is unbounded. We thus define a stochastic reward 
 \bea
 G_t &\coloneqq& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
 &=& R_{t+1} + \gamma G_{t+1}
@@ -209,9 +198,43 @@ q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\tex
 \eea
 
 
+\subsection{Policy Gradient}
 
-We define 
+We define
+\bea
+J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]   \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+&=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]   \prod_{t=0}^{a} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)
+\eea
+We then have
+\bea
+\partial_\theta J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+ &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^a \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^a p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+ &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=b}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^a p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+ &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\gamma^b \sum_{k=0}^{T-1-b} \gamma^k R_{b+k+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{b+k} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)  \nn
+ \eea
+ We can use the relation between returns and rewards to rewrite the above as
+ \bea
+  \partial_\theta J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}}   [ \sum_{b=0}^{T-1} \gamma^b G_b \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+\eea
+While this is an exact relation note that it has extra elements in the path integral where for a given reward we integrate over future MDP. This does not effect the exact results but does effect Monte Carlo methods' variance.
 
+
+\subsection{Importance Sampling}
+
+If we have two different policies $\pi$ and $b$ 
+\bea
+E_\pi[R_{\tau+1}]  = \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t)  p(S_0) \nn
+E_b[R_{\tau+1}]  = \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) b(A_t|S_t)  p(S_0) \nn
+\eea
+Then we get 
+\bea
+E_\pi[R_{\tau+1}] =\mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)   R_{\tau+1}] 
+\eea
+
+So we get
+\bea
+J = 
+\eea
 \section{Bandits}
 
 \subsection{Value Based Models}
