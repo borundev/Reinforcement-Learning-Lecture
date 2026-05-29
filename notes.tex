@@ -37,6 +37,7 @@
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 
+\pagecolor{white}
 
 %%%%%%% Borun's commands %%%%%%%%%%%%%%
 
@@ -53,11 +54,18 @@
 \newcommand\h{\frac{1}{2}}
 \newcommand{\ket}[1]{|#1 \rangle}
 \newcommand{\bra}[1]{\langle #1 |}
-\newcommand{\e}[1]{\mathbb E[#1]}
+\newcommand{\e}[2]{\mathbb E_{#2}[#1]}
 \newcommand{\todo}[1]{{\color{cyan}{TODO: #1}}}
 
+\newcommand{\partitionfunctionintegrand}{{\color{olive} \Bigg(  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) \Bigg) p(S_0) }}
+\newcommand{\partitionfunctionintegrandtheta}{{\color{olive} \Bigg(  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi_\theta(A_t|S_t) \Bigg) p(S_0) }}
+\newcommand{\partitionfunctionintegrandBehaviourial}{{\color{olive} \Bigg(  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) b(A_t|S_t) \Bigg) p(S_0) }}
+\newcommand{\partitionfunctionintegral}{{\color{olive} \sum_{S_{0:T}, A_{0:T-1}}}}
 
+\newcommand{\partitionfunctionintegrandsecond}{{\color{olive} \Bigg(  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) \Bigg) }}
+\newcommand{\partitionfunctionintegralsecond}{{\color{olive} \sum_{S_{1:T}, A_{0:T-1}}}}
 
+\newcommand{\argmax}[1]{\underset{#1}{\text{argmax }}}
 
 \title{Reinforcement Learning}
 \author{Borun D. Chowdhury}
@@ -69,15 +77,17 @@
 
 \section{Introduction}
 
-Imagine a problem where we have an {\em agent} that interacts with and {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? The goal itself may have the reward spread over the entire journey (think stock returns coming from readjusting a portfolio) or have just one reward in the end (checkmate!).
+Imagine a problem where we have an {\em agent} that interacts with and {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? 
 
-We could assign a {\em numerical reward} to the actual goal (if it already is a numerical value we can keep it as is or modulate it) and simply ask the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the reward.  We could also make additional rewards along the way to goad the agent into {\em what we believe} is an optimal path to the ultimate reward.
+We could assign a {\em numerical return} to the outcomes with the largest value for the goal would like to agent to achieve and simply tweak the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the return.  
+
+The return itself could come from rewards sprinkled along the way (think stock market returns) or from a final reward at the last step (checkmate!). In practice, given a goal, one has to decide on numerical rewards and compose a final return from those rewards that is consistent with the goal.
 
 Let's make this concrete. Then a sequence of states and actions are written as 
 \be
-(S_0,A_0,\cancel{R_0})),(S_1,A_1,R_1),(S_2,A_2,R_2) \dots (S_T,\cancel{A_T},R_T) \label{MDP}
+(S_0,A_0,\cancel{R_0}), (S_1,A_1,R_1),(S_2,A_2,R_2), \dots (S_T,\cancel{A_T},R_T) 
 \ee
-Here, we start in a state $S_0$ (which comprises of the {\em state of the environement} as well as the {\em internal state of the agent} and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
+Here, we start in a state $S_0$ (which represents the {\em state of the environement as well as the internal state of the agent}) and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
 
 This process is often made more complicated in practice because of inherent stochasticity in the transition of states after an action is taken as well as in the rewards generated. So in the notation above
 \begin{itemize}
@@ -94,62 +104,85 @@ Now with this Markovian fantasy the thing the agent needs to do at time $t$ is t
 \item What should $\pi(A_t|S_t)$ be?
 \end{itemize}
 
-The rest of the lecture will be  discussing how to solve these problems.
+The rest of the lecture will be  discussing how to solve these problems but we briefly discuss the general ideas. First we need to get back to discussing the {\em return} - a numerical proxy for the goal instead of returns received immediately after an action is taken. The return would be some aggregating function of the rewards in the future of an action and for most problems the contribution  of temporally distant reward ought to be smaller. For computational reason we take
+\be
+G_t  = \sum_{k=0}^\infty \gamma^k R_{t+k+1}
+\ee
+
+Given a policy $\pi(A_t|S_t)$ we can {\em in theory} figure out $p(R_{t+1} | S_t,A_t)$ and $p(S_{t+1}|S_t,A_t)$ by simply sampling these repeatedly. Note these would be independent of the policy $\pi$ as long as the policy leads to visiting the concerned state and take the corresponding action. We would also that way end up getting $p(G_t|S_t,A_t;\pi)$. This is the Monte Carlo method. For details see section~\ref{sec:monte_carlo}.
+
+There is also the bootstrapping method where we make initial guesses for $q_\pi(s,a)$ and take a few steps and update the initial guess by the reward obtained in the process and the best guess at the time. For details see section~\ref{sec:bootstrapping_methods}. 
+
+
+Once we have found the returns for a policy, we can then modify the policy to improve the returns. This is called policy improvement. 
+
+In practice one doesn't go all the way to complete the evaluation for a given policy before improving it. All the flavours of going back and forth between evaluation and improvement are termed {\em Generalized Policy Iteration}.
+
+
 
 \section{Markov Decision Processes}
 
-A MDP is a sequence of states, actions and rewards as shown in eqn \ref{MDP}. Note that
-\bea
-p(S_{t_2}|S_{t_1}) &=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) p(S_t,A_t|S_{t_1}) \\
-&=& \sum_{S_t,A_t} p(S_{t_2}|S_t,A_t) \pi(A_t|S_t) p(S_t|S_{t_1}) 
-\eea
-as long as $t_1 < t < t_2$.
+A MDP is a sequence of states, actions and rewards 
+\be
+(S_0,A_0,\cancel{R_0})),(S_1,A_1,R_1),(S_2,A_2,R_2) \dots (S_T,\cancel{A_T},R_T) \label{MDP}
+\ee
+that may or may not have a terminal state. If it does have a terminal state then we call the full run an {\em episode}.
 
+The {\em process} part should be obvious but let's focus on the other terms. First let's discuss the term {\em Markov}. We make the  Markovian assumptions that we can capture the process by just modelling $p(S_{t+1}|S_t,A_t)$ and $\pi(A_t|S_t)$. The former is the probability to transfer to a new state given a state and an action while  the latter is the probability to take an action $A_t$ given that the state is $S_t$. Strictly speaking, this is not an assumption as given a big enough {\em state space}, we can always capture the past states that matter in the current state. However, in practice this becomes an approximation because the efforts to enlarge the state space is based on feature engineering. Next, let's discuss the term {\em decision}. The term $\pi(A_t|S_t)$ is taken to be {\em tunable} and in that sense it is a decision being taken.
 
-More generally we can write the partition function
+ %Note that the 
+ %\be
+ %p(S_{t+1},A_{t+1}| S_t,A_t) = \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_t,A_t)
+ %\ee
+ 
+For an episodic MDP we can write the partition function
 \bea
-Z_\pi = \sum_{S_{0:T}, A_{0:T-1}} \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)
+Z_\pi = \partitionfunctionintegral \partitionfunctionintegrand
 \eea
+The continuing case is the formal $T \to \infty$ limit of the above.
+ 
+This gives
 \bea
-\mathbb E[R_{\tau+1}|\pi] &=&  \sum_{S_{0:T}, A_{0:T-1}}  R_{\tau+1} p(R_{t+1}|S_t,A_t) \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
-&=& \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t)  p(S_0)
+\mathbb E_\pi[R_{\tau+1}] &=&  \partitionfunctionintegral R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \partitionfunctionintegrand\nn
+&=& {\color{brown} \sum_{S_{0:\tau}, A_{0:\tau}}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) {\color{brown} \prod_{t=0}^{\tau} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t)  p(S_0)}
 \eea
-The actions taken and states coming  after the reward in question do not impact the expectation value. 
+The actions taken and states coming  after the reward in question do not impact the expectation value.  However, formally we will always take the product over all times as it doesn't make a difference.  
 
 So if the agent is about to decide which action to take at time $t$ they should only care about $\mathbb E[R_{t+k}]~\forall~k\ \ge 1$. We can then say that the agent ought to decide based on
 \be
-\sum_{k \ge 1} \mathbb E[R_{t+k}| \pi]
+\sum_{k \ge 1} \mathbb E_\pi[R_{t+k}|S_t,A_t]
 \ee
 however if $k$ is unbounded then this function is unbounded. We thus define a stochastic reward 
 \bea
-G_t &\coloneqq& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
+G_t &\coloneqq& \sum_{k=1}^\infty \gamma^{k-1} R_{t+k} \label{def:G} \nn
 &=& R_{t+1} + \gamma G_{t+1}
 \eea
-
-
-\subsection{Value Based RL}
-
-The state value is defined as
+and the agent then takes actions based on
 \bea
-v_\pi(s) &=& \mathbb E_\pi[G_0|S_0=s] \nn
+A _t= \argmax{a} \mathbb E_\pi[G_t|S_t,a]
+\eea
+
+\section{Value Functions}
+
+We define the {\em value function}
+\bea
+v_\pi(s) &\coloneqq& \mathbb E_\pi[G_0|S_0=s] \nn
 &=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s]
 \eea
-Thus, we see why we had the term $\color{blue}{p(S_0)}$ in blue as to compute state values we take this probability to be sharply peaked while summing over all subsequent paths.
-
-Similarly, the action-value is defined as 
+and the {\em state-action value function}
 \bea
-q_\pi(s,a) &=& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
+q_\pi(s,a) &\coloneqq& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
 &=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s,A_0=a]
 \eea
-and we see why we had the term $\color{red}{\pi(A_0|S_0)}$ in red as in this case this term is also sharply peaked and we only sum over subsequent steps. 
 
-Since the process is Markovian the transition probabilities are independent of the time step. We define
+
+Since the process is Markovian the transition probabilities are independent of the time step. Below we define
 \bea
 p(s'|s,a) \coloneqq p(S_{t+1}=s'|S_t=s,A_t=a)
 \eea
 and likewise other expressions.
 
-Below we use
+We use
 \be
 \mathbb E[A] =\mathbb E[ \mathbb E[A|B] ]
 \ee
@@ -157,12 +190,12 @@ extensively.
 
 We then get
 \bea
-v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
-&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{G_{t+1}|S_t=s;\pi} \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s',\pi}|S_t=s;\pi}  \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{v_\pi(s') |S_t=s;\pi} \nn
-&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a} + \gamma \e{v_\pi(s') |S_t=s,a} \Bigg] \pi(a|s) \nn
+v_\pi(s) &=& \e{G_t|S_t=s}{\pi} \nn
+&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s}{\pi} \nn
+&=& \e{R_{t+1}|S_t=s}{\pi} + \gamma \e{G_{t+1}|S_t=s}{\pi} \nn
+&=& \e{R_{t+1}|S_t=s}{\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s'}{\pi}|S_t=s}{\pi}  \nn
+&=& \e{R_{t+1}|S_t=s}{\pi} + \gamma \e{v_\pi(s') |S_t=s}{\pi} \nn
+&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a}{\pi} + \gamma \e{v_\pi(s') |S_t=s,a}{\pi} \Bigg] \pi(a|s) \nn
 &=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
 \eea
 
@@ -170,19 +203,19 @@ v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
 
 Similarly, we get
 \bea
-q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a';\pi}|S_t=s, A_t=a;\pi} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a;\pi} \nn
+q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a}{\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a}{\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a'}{\pi}|S_t=s, A_t=a}{\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a}{\pi} \nn
 &=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
 &=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
 \eea
 
 From these we see
 \bea
-v_\pi(s) &=&  \e{G_t|S_t=s;\pi} \nn
-&=& \e{\e{G_t|S_t=s,A_t=a;\pi} } \nn
-&=& \e{q_\pi(s,a)} \nn
+v_\pi(s) &=&  \e{G_t|S_t=s}{\pi} \nn
+&=& \e{\e{G_t|S_t=s,A_t=a}{\pi} }{\pi} \nn
+&=& \e{q_\pi(s,a)}{\pi} \nn
 &=& \sum_a q_\pi(s,a) \pi(a|s)
 \eea
 Further we have
@@ -191,40 +224,43 @@ q_\pi(s,a) = \sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a)
 \eea
 
 
+If these {\em were} to be known accurately, the agent can simply take action $A_t = \argmax{a} q_\pi(S_t,a)$. 
+
+However, easier said than done, there are two problems to be solved
+\begin{itemize}
+\item Actually find the correct values for $q_\pi(s,a)$
+\item Find the best $\pi_\star$ such that $\max_a q_{\pi_*}(s,a) \ge \max_a q_\pi(s,a)~~ \forall ~\pi,s$
+\end{itemize}
 We get for the optimal policy
 \bea
-v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg]  \\
-q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
+v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\star(s') p(s'|s,a) \Bigg]  \\
+q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\star(s',a') \right)p(s'|sa)
 \eea
 
 
-\subsection{Policy Gradient}
 
-We define
+
+
+
+\section{Monte Carlo} \label{sec:monte_carlo}
+
+The expected reward is
 \bea
-J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]   \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
-&=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]   \prod_{t=0}^{a} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)
+\mathbb E_\pi[G_0|S_0] &=& \partitionfunctionintegralsecond  \Bigg( \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} p(R_{\tau+1}| S_\tau,A_\tau) \Bigg) \partitionfunctionintegrandsecond  \nn
 \eea
-We then have
+If we repeatedly sample the MDP then the average value will give us the above on expectation. Furthermore, because it's a Markovian process, there is nothing special about the starting state so the multiple samplings of MDP will give us 
 \bea
-\partial_\theta J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
- &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=0}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^a \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^a p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
- &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\sum_{a=b}^{T-1} \gamma^a R_{a+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^a p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
- &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}} [\gamma^b \sum_{k=0}^{T-1-b} \gamma^k R_{b+k+1}]  [ \sum_{b=0}^{T-1} \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{b+k} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0)  \nn
- \eea
- We can use the relation between returns and rewards to rewrite the above as
- \bea
-  \partial_\theta J_\theta &=& \sum_{S_{0:T}, A_{0:T-1}} \sum_{R_{1:T-1}}   [ \sum_{b=0}^{T-1} \gamma^b G_b \partial_\theta \log \pi(A_b|S_b)] \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t) p(S_0) \nn
+q_\pi(s,a) = \mathbb E[G_0|S_0 = s,A_0=a]~\forall~s,a
 \eea
-While this is an exact relation note that it has extra elements in the path integral where for a given reward we integrate over future MDP. This does not effect the exact results but does effect Monte Carlo methods' variance.
+as long as the $(s,a)$ pair are sampled sufficiently.
 
 
-\subsection{Importance Sampling}
+A very useful idea in Monte Carlo is that of {\em importance sampling}. Here, we may sample using policy $b$ while learning the expectations for policy $\pi$. 
 
-If we have two different policies $\pi$ and $b$ 
+Concretely, if we have two different policies $\pi$ and $b$ 
 \bea
-E_\pi[R_{\tau+1}]  = \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) \pi(A_t|S_t)  p(S_0) \nn
-E_b[R_{\tau+1}]  = \sum_{S_{0:t}, A_{0:t}}  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \prod_{t=0}^{\tau-1} p(S_{t+1}|S_t,A_t) b(A_t|S_t)  p(S_0) \nn
+E_\pi[R_{\tau+1}]  = \partitionfunctionintegral  R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \partitionfunctionintegrand \nn
+E_b[R_{\tau+1}]  = \partitionfunctionintegral R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\tau) \partitionfunctionintegrandBehaviourial \nn
 \eea
 Then we get 
 \bea
@@ -233,15 +269,197 @@ E_\pi[R_{\tau+1}] =\mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_
 
 So we get
 \bea
-J = 
+\mathbb  E_\pi [ G_0|S_0] &=& \sum_{\tau=0}^{T-1} \gamma^\tau \mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)   R_{\tau+1}]  \nn
+&=& \partitionfunctionintegralsecond  \Bigg( \sum_{R_{1:T-1}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \Bigg) p(R_{\tau+1}|S_\tau,A_\tau) \right)  \nn
+&\times& \partitionfunctionintegrandsecond \nn
 \eea
+Note this is called {\em per-decision} importance sampling. Another version, one without a name, would have each $R_t$ taken with $\prod_{n=0}^{T-1} \frac{\pi(A_n|S_n)}{b(A_n|S_n)}$. Since the actions after a reward do not matter, the extra terms just add to the variance.
+
+\section{Policy Gradient}
+
+We define
+\bea
+J_\theta &=& \partitionfunctionintegral  \Bigg( \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} p(R_{\tau+1}| S_\tau,A_\tau) \Bigg) \partitionfunctionintegrandtheta  \nn
+\eea
+We then have
+\bea
+\partial_\theta J_\theta &=& \partitionfunctionintegral  \Bigg( \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} p(R_{\tau+1}| S_\tau,A_\tau)  \Bigg)  \nn
+&\times& \Bigg( \sum_{\eta=0}^{T-1} \partial_\theta \log \pi(A_\eta |S_\eta) \Bigg) \partitionfunctionintegrandtheta \nn
+&=& \partitionfunctionintegral  \Bigg( \sum_{\eta=0}^{T-1}  \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1}  (\partial_\theta \log \pi(A_\eta |S_\eta) ) p(R_{\tau+1}| S_\tau,A_\tau)  \Bigg)  \nn
+&\times&  \partitionfunctionintegrandtheta \nn
+&=& \partitionfunctionintegral  \Bigg( \sum_{\eta=0}^{T-1} \partial_\theta \log \pi(A_\eta |S_\eta) \gamma^\eta \sum_{R_{\eta+1:T}} \sum_{k=0}^{T-1-\eta}  \gamma^k R_{\eta+k+1}   p(R_{\eta+k+1}| S_{\eta+k},A_{\eta+k})  \Bigg)  \nn
+&\times&  \partitionfunctionintegrandtheta 
+ \eea
+ We can use the relation between returns and rewards to rewrite the above as
+ \bea
+  \partial_\theta J_\theta &=& \partitionfunctionintegral  \sum_{R_{1:T-1}}   \Bigg( \sum_{\eta=0}^{T-1} \gamma^\eta G_\eta \partial_\theta \log \pi(A_\eta|S_\eta) \Bigg) {\color{olive} \prod_{t=0}^{T-1} } p(R_{t+1}|S_t,A_t) {\color{olive}p(S_{t+1}|S_t,A_t) \pi_\theta(A_t|S_t) p(S_0)} \nn
+\eea
+
+
+
+
+
+\section{Bootstrapping Methods} \label{sec:bootstrapping_methods}
+
+Bootstrap methods rely on {\em assuming} some initial value and updating it by partial traversals of the MDP.  In general they are of the form
+
+\bea
+Q_{t+n}(S_t,A_t) =  Q_{t+n-1} (S_t,A_t) +  \alpha ~ \text{something}
+\eea
+where $\alpha$ is a hyperparameter controlling the EMA scale of updates and the extra part is the actual update. This is the part that will differ in the various methods described below.
+
+The result would converge when
+\be
+\e{\text{something}}{b} = 0
+\ee
+where $b$ is the behaviour policy. The form of the correction would determine what the Q-values actually converge to.
+
+
+
+\subsection{On Policy aka  SARSA}
+
+Let us define a generalized or partial return as
+\bea
+G_{t:t+n} \coloneqq \sum_{k=1}^{n} \gamma^{k-1} R_{t+k} + \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})
+\eea
+We see this is a natural generalisation of equation~\ref{def:G} where we take the actual returns for $n$ steps and then the best estimate {\em at the time} of the state-action value of the resulting state after those $n$ steps and the action taken thereafter. 
+
+Also note the recursive relation
+\bea
+G_{t:t+n} = R_{t+1} + \gamma G_{t+1:t+n} 
+\eea
+and the boundary condition
+\bea
+G_{t+n:t+n} = Q_{t+n-1}(S_{t+n},A_{t+n})
+\eea
+
+The update rule is then
+\bea
+Q_{t+n} (S_t,A_t)  &=&  Q_{t+n-1}(S_t,A_t) + \alpha (G_{t:t+n} - Q_{t+n-1}(S_t,A_t))
+\eea
+and the Q-values learnt are on-policy.
+
+This $n=1$ version of this is called SARSA and has the simple form
+\bea
+Q_{t+1} (S_t,A_t)  &=& Q_{t}(S_t,A_t) + \alpha [R_{t+1} + \gamma Q_t(S_{t+1},A_{t+1}) - Q_{t}(S_t,A_t)]
+\eea
+The general one can then be called the $n$ step SARSA and writing more explicitly we get
+\bea
+Q_{t+n} (S_t,A_t)  &=& Q_{t+n-1}(S_t,A_t) + \alpha [\sum_{k=1}^{n} \gamma^{k-1} R_{t+k} + \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})- Q_{t+n-1}(S_t,A_t) ] \nn
+\eea
+
+\subsection{Off Policy aka Q-Learning}
+
+We us define
+\be
+\rho_{t:t+n} = \prod_{\tau=t}^{min(t+n,T-1)} \frac{\pi(A_\tau|S_\tau)}{b(A_\tau|S_\tau)}
+\ee
+where $\pi$ is the target policy and $b$ is the behaviour policy.
+
+We define the partial returns for off policy as 
+\bea
+\tilde G_{t:t+n} = R_{t+1} + \gamma \rho_{t+1:t+1} \tilde G_{t+1:t+n}
+\eea
+with the boundary condition
+\be
+\tilde G_{t+n:t+n} = \rho_{t+n:t+n} Q_{t+n-1}(S_{t+n},A_{t+n})
+\ee
+
+The the $n$ step SARSA can be replaced by
+\bea
+Q_{t+n} (S_t,A_t) &=& Q_{t+n-1}(S_t,A_t)  + \alpha [ \tilde G_{t:t+n} - \rho_{t+1:t+n-1} Q_{t+n-1}(S_t,A_t)] \nn
+&=& Q_{t+n-1}(S_t,A_t) \nn
+&+& \alpha \Bigg [\sum_{k=1}^{n} \gamma^{k-1}  \rho_{t+1:t+k-1} R_{t+k}  +  \rho_{t+1:t+n}  \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})  \nn
+&-&  \rho_{t+1:t+n-1} Q_{t+n-1}(S_t,A_t) \Bigg]
+\eea
+when we sample by policy $b$ but want expectations as per $\pi$ as the policy.  Notice how we needing an importance sampling factor in front of $Q_{t+n-1}(S_t,A_t)$ in the TD error. This ensures that at convergence we have
+\bea
+&&\e{ \sum_{k=1}^{n} \gamma^{k-1}  \rho_{t+1:t+k-1} R_{t+k}  +  \rho_{t+1:t+n}  \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})  -  \rho_{t+1:t+n-1} Q_{t+n-1}(S_t,A_t) }{b} \nn
+&=& \e{ \sum_{k=1}^{n} \gamma^{k-1} R_{t+k}  +  \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})  -  Q_{t+n-1}(S_t,A_t) }{\pi} \nn
+&=&0
+\eea
+which means that the Q-values being learnt are on-policy.
+
+
+
+
+Now notice that if we don't mind extra variance then we can instead write this as
+\bea
+Q_{t+n} (S_t,A_t) &=&  Q_{t+n-1}(S_t,A_t) + \alpha \rho_{t+1:t+n}  [\sum_{k=0}^{n-1} \gamma^k R_{t+1+k} + \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n}) - Q_{t+n-1}(S_t,A_t) ] \nn
+\eea
+
+
+
+Now let's look at the $n=1$ case. We get
+\bea
+Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma  \frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1},S_{t+1})}  Q_{t}(S_{t+1},A_{t+1}) - Q_{t}(S_t,A_t) ] \nn
+\eea
+If $\pi$ is the greedy policy we get have $\pi(A_{t+1}|S_{t+1}) =\delta_{\argmax{a}Q_t(S_{t+1},a),A_{t+1}}$. This gives 
+\bea
+Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma Q_{t}(S_{t+1},A_{t+1})  \frac{\delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}}{b(A_{t+1},S_{t+1})}  - Q_{t} (S_t,A_t)] \nn
+\eea
+Furthermore, since
+\bea
+&&\mathbb E_b[ Q_t(S_{t+1},A_{t+1} ) \delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}\frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1},S_{t+1})} ]  \nn
+&=& \mathbb E_\pi [ Q_t(S_{t+1},A_{t+1} )\delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}] \nn
+&=& \max_a Q_t(S_{t+1},a)
+\eea
+we can replace the stochastic term with it's average 
+\bea
+Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma \max_a Q_t(S_{t+1},a) - Q_{t}(S_t,A_t)] 
+\eea
+This has reduced variance than the sampled form of the expression.
+
+
+
+\subsection{Tree Backup}
+
+For this the recursive relation for the partial return is modified by the red and blue pieces below
+\bea
+\tilde G_{t:t+n}  &=& R_{t+1} + \gamma \left( {\color{red} \sum_{a \ne A_{t+1}} Q_{t+n-1}(S_{t+1},a) \pi(a|S_{t+1}) } + {\color{blue} \pi(A_{t+1}|S_{t+1}) } \tilde G_{t+1:t+n} \right) \nn
+\eea
+Thus, while in Monte Carlo we put the full weight on the path taken by taking the red part as zero and the blue part as one, here we take the values of paths not taken into account as well.
+
+Let's write down a couple of these 
+
+\bea
+\tilde G_{t:t+1}  = R_{t+1} + \gamma \sum_a \pi(a|S_{t+1}) Q_{t}(S_{t+1},a)
+\eea
+and
+\bea
+\tilde G_{t:t+2} &=&  R_{t+1} + \gamma \sum_{a \ne A_{t+1}} \pi(a|S_{t+1}) Q_{t+1} (S_{t+1},a) \nn
+&& + \gamma \pi(A_{t+1}|S_{t+1})  \left(R_{t+2} + \gamma \sum_a \pi(a|S_{t+2}) Q_{t+1}(S_{t+2},a)
+ \right)
+\eea
+
+The update rule is
+\bea
+Q_{t+n}(S_t,A_t) =Q_{t+n-1}(S_t,A_t)  + \alpha [ \tilde  G_{t:t+n} - Q_{t+n-1} (S_t,A_t)]
+\eea
+and the Q value learnt is as per the target policy.
+
+\appendix
+\section{Some results about Importance Sampling}
+
+\bea
+\mathbb E_b [ f(A_t) \frac{\pi(A_t|S_t)}{b(A_t|S_t)}] &=& \sum_a f(a) \frac{\pi(a|S_t)}{b(a|S_t)} b(a|S_t) \nn
+&=& \sum_a f(a) \pi(a|S_t) \nn
+&=& \mathbb E_\pi E[ f(A_t)]
+\eea
+
+Therefore it is easy to see that
+\be
+\mathbb E_b[ c  \frac{\pi(A_t|S_t)}{b(A_t|S_t)}] = c
+\ee
+where $c$ is not a function of $A_t$.
+
 \section{Bandits}
 
 \subsection{Value Based Models}
 
 Suppose there is a process where one can choose among a set of actions $\{a\}$ that give rewards $R$ then it makes sense to take actions that maximize the reward
 \bea
-q_*(a) = \e{R|A=a}
+q_*(a) = \e{R|A=a}{\pi_*}
 \eea
 which is the expectation of the reward given the action chose is $a$.
 
@@ -278,148 +496,6 @@ Q_{n+1} &=& Q_n + \alpha [R_n - Q_n] \nn
 &=& (1-\alpha)^n Q_1 + \alpha \sum_{i=1}^n (1-\alpha)^{n-i} R_i
 \eea
 
-\section{Markov Reward Process}
-
-A Markov Reward Process is a process where one starts off in a state and at each time makes a transition to another state (possibly the same) while earning some rewards
-\be
-(S_0,\cancel{R_0}),(S_1,R_1), \dots
-\ee
-
-The probability to get to state $S_T$ at time step $T$ is
-\be
-p(S_T) = \sum_{S_0} p(S_T|S_0)p(S_0)
-\ee
-Usually the initial state is sharply peaked $p(S_0) = \delta_{S_0,s_0}$ for some $s_0$. We have
-\bea
-\sum_{S_T} p(S_T|S_0) &=& 1 \\
-p(S_T|S_0) &=& \sum_{S_t} p(S_T|S_t)p(S_t,S_0)
-\eea
-
-We then have
-\bea
-E[R_{t+1}|S_0] &=& \sum_{S_T,S_{t},R_{t+1}} R_{t+1} p(S_T,S_{t}) {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0) \nn
-&=& \sum_{S_{t},R_{t+1}} R_{t+1} {\color{cyan} p(R_{t+1},S_{t})} p(S_{t},S_0)
-\eea
-The states after time $t$ do not matter for the expectation value of $R_T$ due to causality.
-
-
-
-\section{Markov Decision Process}
-
-Where Markov Decision Process also involves and agent choosing actions at each step
-\be
-(S_0,A_0,\cancel{R_0}),(S_1,A_1,R_1), \dots
-\ee
-
-Note that
-\bea
-p(S_T|S_0) &=& \sum_{S_t,S_0} p(S_T|S_t) p(S_t|S_0) \\
-\sum_{S_T} p(S_T|S_t) &=& 1
-\eea
-Furthermore,
-\bea
-p(S_T|S_0) &=& \sum_{S_t,A_t} p(S_T|S_t,A_t) \pi(A_t|S_t) p (S_t|S_0) \\
-\sum_{S_T} p(S_T|S_t,A_t) &=& 1
-\eea
-
-Thus we have
-\bea
-\mathbb E[R_{t+1}] &=&  \sum_{S_0,S_T,S_t,A_t} R_{t+1} p(S_T|S_t,A_t) {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)} \nn
-&=& \sum_{S_0,S_t,A_t} R_{t+1} {\color{cyan} p(R_{t+1}|S_t,A_t)} \pi(A_t|S_t) p (S_t|S_0) {\color{blue} p(S_0)}
-\eea
-Thus the states and actions after $t$ do not matter.
-
-We can break the "propagator" into individual time steps so
-\bea
-\mathbb E[ R_{t+1}] &=& \sum_{R_{t+1}, S_0, S_1, \dots S_T, A_0,A_1, A_{T-1}} R_{t+1} \Bigg[ \nn
-&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
-&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
-&& \qquad \qquad \dots \nn
-&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
-&& \qquad \times {\color{olive} \pi(A_{t+1}|S_{t+1}) p(S_{t+1}|S_{t},A_{t}) } \nn
-&& \qquad \qquad {\color{olive} \dots} \nn
-&& \qquad \times {\color{olive} \pi(A_{T-1}|S_{T-1}) p(S_{T-1}|S_{T-2},A_{T-2}) } \nn
-&& \qquad \times {\color{olive} p(S_T)} \nn
-&& \Bigg]  \nn
-&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})} \nn
-&=& \sum_{R_{t+1}, S_0, S_1, \dots S_t, A_0,A_1, A_{t}} R_{t+1} \Bigg[ \nn
-&& \qquad \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} \nn
-&& \qquad \times \pi(A_{1}|S_{1}) p(S_{1}|S_0,A_0) \nn
-&& \qquad \qquad \dots \nn
-&&  \qquad \times \pi(A_{t}|S_{t}) p(S_{t}|S_{t-1},A_{t-1}) \nn
-&& \Bigg]  \nn
-&& \times{\color{cyan} p(R_{t+1}| S_{t},A_{t})}
-\eea
-Here the olive colored terms are redundant in that the sum on them can be done directly and will give one. 
-
-We define a discounted (stochastic) reward as
-\bea
-G_t &:=& \sum_{k=0}^\infty \gamma^k R_{t+1+k} \nn
-&=& R_{t+1} + \gamma G_{t+1}
-\eea
-
-The state value is defined as
-\bea
-v_\pi(s) &=& \mathbb E_\pi[G_0|S_0=s] \nn
-&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s]
-\eea
-Thus, we see why we had the term $\color{blue}{p(S_0)}$ in blue as to compute state values we take this probability to be sharply peaked while summing over all subsequent paths.
-
-Similarly, the action-value is defined as 
-\bea
-q_\pi(s,a) &=& \mathbb E_\pi[G_0|S_0=s,A_0=a] \nn
-&=& \sum_{t=0}^\infty \gamma^t \mathbb E_\pi[R_{t+1} |S_0=s,A_0=a]
-\eea
-and we see why we had the term $\color{red}{\pi(A_0|S_0)}$ in red as in this case this term is also sharply peaked and we only sum over subsequent steps. 
-
-Since the process is Markovian the transition probabilities are independent of the time step. We define
-\bea
-p(s'|s,a) = p(S_{t+1}=s'|S_t=s,A_t=a)
-\eea
-and likewise other expressions.
-
-We then get
-\bea
-v_\pi(s) &=& \e{G_t|S_t=s;\pi} \nn
-&=& \e{R_{t+1} + \gamma G_{t+1} |S_t=s;\pi} \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{G_{t+1}|S_t=s;\pi} \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{\e{G_{t+1}|S_{t+1}=s',\pi}|S_t=s;\pi}  \nn
-&=& \e{R_{t+1}|S_t=s;\pi} + \gamma \e{v_\pi(s') |S_t=s;\pi} \nn
-&=& \sum_a \Bigg[\e{R_{t+1}|S_t=s,a} + \gamma \e{v_\pi(s') |S_t=s,a} \Bigg] \pi(a|s) \nn
-&=& \sum_a \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg] \pi(a|s) 
-\eea
-
-Similarly, we get
-\bea
-q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a;\pi} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a';\pi}|S_t=s, A_t=a;\pi} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a;\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a;\pi} \nn
-&=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
-&=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
-\eea
-
-From these we see
-\bea
-v_\pi(s) &=&  \e{G_t|S_t=s;\pi} \nn
-&=& \e{\e{G_t|S_t=s,A_t=a;\pi} } \nn
-&=& \e{q_\pi(s,a)} \nn
-&=& \sum_a q_\pi(s,a) \pi(a|s)
-\eea
-Further we have
-\bea
-q_\pi(s,a) = \sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a)
-\eea
-
-
-We get for the optimal policy
-\bea
-v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\pi(s') p(s'|s,a) \Bigg]  \\
-q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\pi(s',a') \right)p(s'|sa)
-\eea
-
-
-
 \section{Monte Carlo}
 
 \subsection{The idea}
@@ -430,58 +506,10 @@ v_\pi(s), q_\pi(s,a)
 \ee 
 by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converse but proving theorems is easier for the former.
 
-\subsection{Importance Sampling}
 
-We have the expectation of a reward under policy $\pi$ 
-\bea
-\mathbb E_{\pi}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
-&& \times \left( \prod_{n=0}^{t-1} \pi(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
-&&\times \color{red}{\pi(A_0|S_0)} \color{blue}{p(S_0)} 
-\eea
-and under a different policy we have
-\bea
-\mathbb E_{b}[R_{t+1}] &=& \sum_{R_{t+1}, S_0,A_0, \dots S_{t}, A_{t}} R_{t+1} ~ p(R_{t+1}| S_{t},A_{t}) \nn
-&& \times \left( \prod_{n=0}^{t-1} b(A_{n+1} | S_{n+1} ) p( S_{n+1} | S_{n}, A_{n}) \right) \nn
-&&\times \color{red}{b(A_0|S_0)} \color{blue}{p(S_0)} 
-\eea
-So clearly we have
-\bea
-\mathbb E_{\pi}[R_{t+1}] &=& \mathbb E_{b}[ \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
-&=&  \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}]  \nn
-\eea
-Where in the second line we have written the importance sampling contribution from the full path but the part in olive does not matter as it is after the reward. 
+\section{Taking Averages For Monte Carlo Reinforcement Learning}
 
-More concretely we have
-\bea
- \mathbb E_\pi[R_{t+1} | S_0=s] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) {\color{red}\frac{\pi(A_{0} | S_{0} )}{b(A_{0} | S_{0} )}}   R_{t+1}|S_0 = s] \nn
-\eea
-and
-\bea
-\mathbb E_\pi[R_{t+1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=t+1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{t} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{t+1}|S_0 = s,A_0=a] \nn
-\eea
-
-
-In particular
-\bea
-\mathbb E_\pi[R_{1} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   R_{1}|S_0 = s,A_0=a] \nn
-\mathbb E_\pi[R_{2} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=2}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{2}|S_0 = s,A_0=a] \nn
-\mathbb E_\pi[R_{3} | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{olive} \left( \prod_{n=3}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)} \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)    R_{3}|S_0 = s,A_0=a] \nn
-\eea
-
-So for instance we can have
-\bea
-\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b}[ {\color{black} \left( \prod_{n=1}^{T-1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)}   (R_{1}+ \gamma R_2 + \gamma^2 R_3)|S_0 = s,A_0=a] \nn
-\eea
-But this adds extra noise when sampling because of parts that average to 1 but have variance. So instead one ought to take
-\bea
-\mathbb E_\pi[G_0 | S_0=s,A_0=a] &=& \mathbb E_{b} [R_1 + \gamma  \left( \prod_{n=1}^{1} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_2 + \gamma^2  \left( \prod_{n=1}^{2} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right) R_3 |S_0 = s,A_0=a] \nn
-\eea
-
-If we take a full episode
-
-\subsection{Taking Averages}
-
-\subsubsection{Ordinary Importance Sampling}
+\subsection{Ordinary Importance Sampling}
 
 For Monte Carlo we can talk about two kinds of averages across episodes. The first is {\em ordinary importance sampling} 
 \bea
@@ -537,7 +565,7 @@ q(s,\bar a) &=& R_6
 \end{itemize}
 \end{itemize}
 
-\subsubsection{Ordinary Importance Sampling: Per-importance importance sampling}
+\subsection{Ordinary Importance Sampling: Per-importance importance sampling}
 
 At this point it makes sense to {\em re-write the above after dropping the importance sampling ratios after the reward} as they do not make an effect on expectation but increase variance.
  
@@ -573,7 +601,7 @@ q(s,\bar a) &=& R_6
 \end{itemize}
 
 
-\subsubsection{Weighted Importance Sampling}
+\subsection{Weighted Importance Sampling}
 
 \bea
 V(s) = \frac{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} G_t}{\sum_{t \in \mathcal T(s)} \rho_{t:T(t)-1} }
@@ -722,16 +750,8 @@ Thus recursively we get
 \eea
 
 
-\section{Explicit Policy Gradient}
-
-Recall we have
-\bea
-\mathbb E_\pi[ R_{t+1}] &=&  \sum_{R_{t+1},S_{0:T}, A_{0:T-1}} R_{t+1}  \prod_{t=0}^{T-1} p(S_{t+1}|S_t,A_t) \nn
-&=&  \sum_{R_{t+1},S_{0:T}, A_{0:T-1}} R_{t+1}  \prod_{t=0}^{t} p(S_{t+1}|S_t,A_t) 
-\eea
 
 
-\appendix
 
 \section{Importance Sampling Example}
 Note that
@@ -769,6 +789,15 @@ so we could also simply take
 \bea
 q(s,a) &=&  \frac{ R_3 + (R_1 + \gamma R_2 \frac{\pi(A_1|S_1)}{b(A_1|S_1)} + \gamma^2 R_3 \frac{\pi(A_1|S_1)\pi(A_2|S_2)}{b(A_1|S_1)b(A_2|S_2)} ) }{2} \\
 q(s',a') &=& (R_2 + \gamma R_3 \frac{\pi(A_2|S_2)}{b(A_2|S_2)})
+\eea
+
+
+\section{Renormalisation}
+
+Suppose when we take an action, we need to take it again then
+
+\bea
+q_\pi(s,a) =  \sum_r r p(r|s,a) + \gamma \sum_{r,s'}  r p(r|s',a) p(s'|s,a)+ \gamma^2 \sum_{s'',a'',s'} q_\pi(s'',a'') \pi(a''|s'') p(s''|s',a) p(s'|s,a)
 \eea
 
 \end{document}
