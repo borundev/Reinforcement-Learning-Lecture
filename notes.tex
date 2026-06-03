@@ -277,6 +277,8 @@ Note this is called {\em per-decision} importance sampling. Another version, one
 
 \section{Policy Gradient}
 
+\subsection{From the Trajectory Return}
+
 We define
 \bea
 J_\theta &=& \partitionfunctionintegral  \Bigg( \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} p(R_{\tau+1}| S_\tau,A_\tau) \Bigg) \partitionfunctionintegrandtheta  \nn
@@ -297,6 +299,27 @@ We then have
 
 
 
+
+
+\subsection{From the Value Function}
+
+
+Below we understand that $\pi(a|s)$ depends on $\theta$ parameterically.
+
+We then have
+\bea
+\partial_\theta v_\pi(s) &=& \partial_\theta \sum_a q_\pi(s,a) \pi(a|s) \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \sum_a \pi(a|s) \partial_\theta q_\pi(s,a) \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a)  + \gamma \sum_{a,s'} \pi(a|s) p(s'|s,a) \partial_\theta v_\pi(s') \nn
+&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \gamma \sum_{s'} \partial_\theta v_\pi(s') p(s'|s)
+\eea
+Thus, iterating the recursion and noting that a state $x$ reached from $s$ in $k$ steps accumulates a factor $\gamma^k$, we define the (unnormalised) discounted visitation $p(x|s) \coloneqq \sum_{k=0}^\infty \gamma^k p_k(x|s)$, where $p_k(x|s)$ is the $k$-step transition probability under $\pi$. This gives
+\bea
+\partial_\theta v_\pi(s) &=& \sum_{x \in \mathcal S} p(x|s) \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \nn
+&=& \mathbb E_\pi \left[  \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \right] \nn
+&=& \mathbb E_\pi \left[ \sum_a \pi(a| x) \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a) \right] \nn
+&=& \mathbb E_\pi \left[ \mathbb E_a [ \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a)]  \right] \nn
+\eea
 
 
 \section{Bootstrapping Methods} \label{sec:bootstrapping_methods}
@@ -729,25 +752,6 @@ We also get
 This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
 
 
-\section{Policy Gradient}
-
-
-Below we understand that $\pi(a|s)$ depends on $\theta$ parameterically.
-
-We then have
-\bea
-\partial_\theta v_\pi(s) &=& \partial_\theta \sum_a q_\pi(s,a) \pi(a|s) \nn
-&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \sum_a \pi(a|s) \partial_\theta q_\pi(s,a) \nn
-&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a)  + \gamma \sum_{a,s'} \pi(a|s) p(s'|s,a) \partial_\theta v_\pi(s') \nn
-&=& \sum_a \partial_\theta \pi(a|s) q_\pi(s,a) + \gamma \sum_{s'} \partial_\theta v_\pi(s') p(s'|s)
-\eea
-Thus, iterating the recursion and noting that a state $x$ reached from $s$ in $k$ steps accumulates a factor $\gamma^k$, we define the (unnormalised) discounted visitation $p(x|s) \coloneqq \sum_{k=0}^\infty \gamma^k p_k(x|s)$, where $p_k(x|s)$ is the $k$-step transition probability under $\pi$. This gives
-\bea
-\partial_\theta v_\pi(s) &=& \sum_{x \in \mathcal S} p(x|s) \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \nn
-&=& \mathbb E_\pi \left[  \sum_a \partial_\theta \pi(a| x) q_\pi(x,a) \right] \nn
-&=& \mathbb E_\pi \left[ \sum_a \pi(a| x) \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a) \right] \nn
-&=& \mathbb E_\pi \left[ \mathbb E_a [ \partial_\theta \left( \log \pi(a|x) \right)q_\pi(x,a)]  \right] \nn
-\eea
 
 
 
