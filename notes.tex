@@ -77,7 +77,7 @@
 
 \section{Introduction}
 
-Imagine a problem where we have an {\em agent} that interacts with and {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? 
+Imagine a problem where we have an {\em agent} that interacts with an {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? 
 
 We could assign a {\em numerical return} to the outcomes with the largest value for the goal would like to agent to achieve and simply tweak the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the return.  
 
@@ -87,7 +87,7 @@ Let's make this concrete. Then a sequence of states and actions are written as
 \be
 (S_0,A_0,\cancel{R_0}), (S_1,A_1,R_1),(S_2,A_2,R_2), \dots (S_T,\cancel{A_T},R_T) 
 \ee
-Here, we start in a state $S_0$ (which represents the {\em state of the environement as well as the internal state of the agent}) and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
+Here, we start in a state $S_0$ (which represents the {\em state of the environment as well as the internal state of the agent}) and may be only partially visible to the agent. The agent then takes the action $A_0$. This results in reward which we {\em choose to label $R_1$}. This explains why $R_0$ is cancelled out since the game has just started. This goes on till the game terminates at time $T$. Note it is not necessary that a game terminates.
 
 This process is often made more complicated in practice because of inherent stochasticity in the transition of states after an action is taken as well as in the rewards generated. So in the notation above
 \begin{itemize}
@@ -96,9 +96,9 @@ This process is often made more complicated in practice because of inherent stoc
 \item The reward is sampled $R_{t+1} \sim p(R_{t+1}|S_t,A_t)$
 \end{itemize}
 
-Note we have given in to the Markovian fantasy above in that we assume the next step depends only on the current state. In theory, this is not a big assumption, as one can always {\em define} the state to contain all the past information that is required. In practice though it is a strong assumption that is frequently made without much though largely due to the complexity involved in the alternative assumption.
+Note we have given in to the Markovian fantasy above in that we assume the next step depends only on the current state. In theory, this is not a big assumption, as one can always {\em define} the state to contain all the past information that is required. In practice though it is a strong assumption that is frequently made without much thought largely due to the complexity involved in the alternative assumption.
 
-Now with this Markovian fantasy the thing the agent needs to do at time $t$ is to decide what action to take in the state $S_t$. In order to do this the agent needs to have a {\em policy} from which actions are sampled $A_t \sim \pi(A_t|S_t)$. This may be a deterministic or stochastic policy. Now are come to the two main problems of Reinforcement Learning
+Now with this Markovian fantasy the thing the agent needs to do at time $t$ is to decide what action to take in the state $S_t$. In order to do this the agent needs to have a {\em policy} from which actions are sampled $A_t \sim \pi(A_t|S_t)$. This may be a deterministic or stochastic policy. Now we come to the two main problems of Reinforcement Learning
 \begin{itemize}
 \item What are $p(R_{t+1} | S_t,A_t)$ and $p(S_{t+1}|S_t,A_t)$?
 \item What should $\pi(A_t|S_t)$ be?
@@ -206,7 +206,7 @@ Similarly, we get
 q_\pi(s,a) &=& \e{G_t | S_t=s,A_t=a}{\pi} \nn
 &=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{G_{t+1} | S_t=s, A_t=a}{\pi} \nn
 &=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{ \e{G_{t+1} | S_{t+1}=s',A_{t+1}=a'}{\pi}|S_t=s, A_t=a}{\pi} \nn
-&=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{ q_\pi(s',a')||S_t=s, A_t=a}{\pi} \nn
+&=& \e{R_{t+1} |S_t=s,A_t=a}{\pi} + \gamma \e{ q_\pi(s',a')|S_t=s, A_t=a}{\pi} \nn
 &=& \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') p(s',a'|s,a) \nn
 &=&  \sum_r r p(r|s,a) + \gamma \sum_{s',a'} q_\pi(s',a') \pi(a'|s') p(s'|s,a)
 \eea
@@ -234,7 +234,7 @@ However, easier said than done, there are two problems to be solved
 We get for the optimal policy
 \bea
 v_\star(s) &=&\underset{a}{\text{max}}  \Bigg[\sum_r r p(r|s,a) + \gamma \sum_{s'} v_\star(s') p(s'|s,a) \Bigg]  \\
-q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\star(s',a') \right)p(s'|sa)
+q_\star(s,a) &=& \sum_r r p(r|s,a)  + \gamma \sum_{s'} \left( \underset{a'}{\text{max}} ~q_\star(s',a') \right)p(s'|s,a)
 \eea
 
 
@@ -264,13 +264,13 @@ E_b[R_{\tau+1}]  = \partitionfunctionintegral R_{\tau+1} p(R_{\tau+1}|S_\tau,A_\
 \eea
 Then we get 
 \bea
-E_\pi[R_{\tau+1}] =\mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)   R_{\tau+1}] 
+E_\pi[R_{\tau+1}] =\mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )} \right)   R_{\tau+1}] 
 \eea
 
 So we get
 \bea
-\mathbb  E_\pi [ G_0|S_0] &=& \sum_{\tau=0}^{T-1} \gamma^\tau \mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \right)   R_{\tau+1}]  \nn
-&=& \partitionfunctionintegralsecond  \Bigg( \sum_{R_{1:T-1}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} \left( \prod_{t=0}^{\tau} \frac{\pi(A_{n} | S_{n} )}{b(A_{n} | S_{n} )} \Bigg) p(R_{\tau+1}|S_\tau,A_\tau) \right)  \nn
+\mathbb  E_\pi [ G_0|S_0] &=& \sum_{\tau=0}^{T-1} \gamma^\tau \mathbb E_{b}[ \left( \prod_{t=0}^{\tau} \frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )} \right)   R_{\tau+1}]  \nn
+&=& \partitionfunctionintegralsecond  \Bigg( \sum_{R_{1:T}} \sum_{\tau=0}^{T-1} \gamma^\tau R_{\tau+1} \left( \prod_{t=0}^{\tau} \frac{\pi(A_{t} | S_{t} )}{b(A_{t} | S_{t} )} \right) p(R_{\tau+1}|S_\tau,A_\tau) \Bigg)  \nn
 &\times& \partitionfunctionintegrandsecond \nn
 \eea
 Note this is called {\em per-decision} importance sampling. Another version, one without a name, would have each $R_t$ taken with $\prod_{n=0}^{T-1} \frac{\pi(A_n|S_n)}{b(A_n|S_n)}$. Since the actions after a reward do not matter, the extra terms just add to the variance.
@@ -292,7 +292,7 @@ We then have
  \eea
  We can use the relation between returns and rewards to rewrite the above as
  \bea
-  \partial_\theta J_\theta &=& \partitionfunctionintegral  \sum_{R_{1:T-1}}   \Bigg( \sum_{\eta=0}^{T-1} \gamma^\eta G_\eta \partial_\theta \log \pi(A_\eta|S_\eta) \Bigg) {\color{olive} \prod_{t=0}^{T-1} } p(R_{t+1}|S_t,A_t) {\color{olive}p(S_{t+1}|S_t,A_t) \pi_\theta(A_t|S_t) p(S_0)} \nn
+  \partial_\theta J_\theta &=& \partitionfunctionintegral  \sum_{R_{1:T}}   \Bigg( \sum_{\eta=0}^{T-1} \gamma^\eta G_\eta \partial_\theta \log \pi(A_\eta|S_\eta) \Bigg) {\color{olive} \prod_{t=0}^{T-1} } p(R_{t+1}|S_t,A_t) {\color{olive}p(S_{t+1}|S_t,A_t) \pi_\theta(A_t|S_t) p(S_0)} \nn
 \eea
 
 
@@ -378,7 +378,7 @@ when we sample by policy $b$ but want expectations as per $\pi$ as the policy.  
 &=& \e{ \sum_{k=1}^{n} \gamma^{k-1} R_{t+k}  +  \gamma^n Q_{t+n-1}(S_{t+n},A_{t+n})  -  Q_{t+n-1}(S_t,A_t) }{\pi} \nn
 &=&0
 \eea
-which means that the Q-values being learnt are on-policy.
+which means that the Q-values being learnt are those of the target policy $\pi$.
 
 
 
@@ -392,15 +392,15 @@ Q_{t+n} (S_t,A_t) &=&  Q_{t+n-1}(S_t,A_t) + \alpha \rho_{t+1:t+n}  [\sum_{k=0}^{
 
 Now let's look at the $n=1$ case. We get
 \bea
-Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma  \frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1},S_{t+1})}  Q_{t}(S_{t+1},A_{t+1}) - Q_{t}(S_t,A_t) ] \nn
+Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma  \frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1}|S_{t+1})}  Q_{t}(S_{t+1},A_{t+1}) - Q_{t}(S_t,A_t) ] \nn
 \eea
 If $\pi$ is the greedy policy we get have $\pi(A_{t+1}|S_{t+1}) =\delta_{\argmax{a}Q_t(S_{t+1},a),A_{t+1}}$. This gives 
 \bea
-Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma Q_{t}(S_{t+1},A_{t+1})  \frac{\delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}}{b(A_{t+1},S_{t+1})}  - Q_{t} (S_t,A_t)] \nn
+Q_{t+1} (S_t,A_t) &=& Q_{t}(S_t,A_t) + \alpha [  R_{t+1}  + \gamma Q_{t}(S_{t+1},A_{t+1})  \frac{\delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}}{b(A_{t+1}|S_{t+1})}  - Q_{t} (S_t,A_t)] \nn
 \eea
 Furthermore, since
 \bea
-&&\mathbb E_b[ Q_t(S_{t+1},A_{t+1} ) \delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}\frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1},S_{t+1})} ]  \nn
+&&\mathbb E_b[ Q_t(S_{t+1},A_{t+1} ) \delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}\frac{\pi(A_{t+1}|S_{t+1})}{b(A_{t+1}|S_{t+1})} ]  \nn
 &=& \mathbb E_\pi [ Q_t(S_{t+1},A_{t+1} )\delta_{\argmax{a} Q_t(S_{t+1},a),A_{t+1}}] \nn
 &=& \max_a Q_t(S_{t+1},a)
 \eea
@@ -444,7 +444,7 @@ and the Q value learnt is as per the target policy.
 \bea
 \mathbb E_b [ f(A_t) \frac{\pi(A_t|S_t)}{b(A_t|S_t)}] &=& \sum_a f(a) \frac{\pi(a|S_t)}{b(a|S_t)} b(a|S_t) \nn
 &=& \sum_a f(a) \pi(a|S_t) \nn
-&=& \mathbb E_\pi E[ f(A_t)]
+&=& \mathbb E_\pi[ f(A_t)]
 \eea
 
 Therefore it is easy to see that
@@ -467,7 +467,7 @@ We want to
 \begin{itemize}
 \item Find the true values for each action
 \be
-Q_t(a) := \frac{\sum_{i=1}^{t-1} R_i \delta_{A_i,a}}{\sum_{i=1}^{t-1}  \delta_{A_i,1}} \label{rewardrunningmean}
+Q_t(a) := \frac{\sum_{i=1}^{t-1} R_i \delta_{A_i,a}}{\sum_{i=1}^{t-1}  \delta_{A_i,a}} \label{rewardrunningmean}
 \ee
 \item Take the action with the max value
 \be
@@ -504,7 +504,7 @@ When we do not know the dynamics of the system (i.e. $p(s'|s,a)$ and/or $p(r|s,a
 \be
 v_\pi(s), q_\pi(s,a)
 \ee 
-by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converse but proving theorems is easier for the former.
+by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converge but proving theorems is easier for the former.
 
 
 \section{Taking Averages For Monte Carlo Reinforcement Learning}
@@ -543,7 +543,7 @@ q(s',a') &=& G_1 \rho_{2,\infty}  \nn
 &=& (R_2 + \gamma R_3) \frac{\pi(a|s)}{b(a|s)}
 \eea
 \end{itemize}
-\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\item  Episode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
 \bea
 G_0 &=& R_4 + \gamma R_5 + \gamma^2 R_6 \\
 G_1 &=& R_5 + \gamma R_6 \\
@@ -623,7 +623,7 @@ q(s,a) &=& \frac{(R_1 + \gamma R_2+\gamma^2 R_3) \frac{\pi(a'|s') \pi(a|s)}{b(a'
 q(s',a') &=& (R_2 + \gamma R_3) 
 \eea
 \end{itemize}
-\item  Epsiode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
+\item  Episode 2: $\{(s',a'),(s',a',R_4),(s,\bar a,R_5),(s_t,R_6)\}$
 \begin{itemize}
 \item First Visit
 \bea
@@ -652,11 +652,11 @@ Loop over episodes: \\
  \phantom{abcd} $G=0$ \\
   \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
   \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
-  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +G}{C(S_t,A_t)+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C(S_t,A_t) Q(S_t,A_t) +G}{C(S_t,A_t)+1}$ \\
     \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$
 \end{tcolorbox}
 
-The algorithm for off-policy oridinary importance sampling MC prediction is
+The algorithm for off-policy ordinary importance sampling MC prediction is
 
 \begin{tcolorbox}[enhanced,title=Off-policy ordinary importance sampling prediction]
 Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
@@ -666,7 +666,7 @@ Loop over episodes: \\
   \phantom{abcd} $W=1$ \\
   \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
   \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
-  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C(S_t,A_t) Q(S_t,A_t) +W G}{C(S_t,A_t)+1}$ \\
     \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
     \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
 \end{tcolorbox}
@@ -677,15 +677,15 @@ The algorithm for off-policy weighted importance sampling MC prediction is
 Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
 Loop over episodes: \\
  \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
- \phantom{abcd} $G,W=0$ \\
+ \phantom{abcd} $G=0$ \\
   \phantom{abcd} $W=1$ \\
   \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
   \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
-  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) +W G}{C(S_t,A_t)+W}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C(S_t,A_t) Q(S_t,A_t) +W G}{C(S_t,A_t)+W}$ \\
     \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += W$ \\
     \phantom{abcd}   \phantom{abcd}  $W*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
 \end{tcolorbox}
-The algorithm for off-policy per decision oridinary importance sampling MC prediction is
+The algorithm for off-policy per decision ordinary importance sampling MC prediction is
 
 \begin{tcolorbox}[enhanced,title=Off-policy per decision ordinary importance sampling prediction]
 Initialize $Q(s,a)=$ random and $C(s,a)=0$ $\forall~s,a$ \\
@@ -694,7 +694,7 @@ Loop over episodes: \\
  \phantom{abcd} $G=0$ \\
   \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
   \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
-  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C_(S_t,A_t) Q_(S_t,A_t) + G}{C(S_t,A_t)+1}$ \\
+  \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C(S_t,A_t) Q(S_t,A_t) + G}{C(S_t,A_t)+1}$ \\
     \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
     \phantom{abcd}   \phantom{abcd}  $G*= \frac{\pi(A_t|S_t)}{b(A_t|S_t)}$   
 \end{tcolorbox}
@@ -716,14 +716,14 @@ We also have
 
 If we compute this with importance sampling we get
 \bea
-\mathbb E_b[G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{k+1} \nn
+\mathbb E_b[G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t)}] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{k+1} \nn
 &=& \frac{pq}{1-p(1-q)}
 \eea
 which is the same as under the target policy.
 
 We also get
 \bea
-\mathbb E_b[\left(G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t}\right)^2] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{2(k+1)} \nn
+\mathbb E_b[\left(G_0 \prod_{t=0}^\infty \frac{\pi(A_t|S_t)}{b(A_t|S_t)}\right)^2] &=& \tilde pq \sum_{k=0}^\infty (\tilde p (1-q))^k \left( \frac{p}{\tilde p} \right)^{2(k+1)} \nn
 &=& \frac{qp^2}{\tilde p} \sum_{k=0}^\infty \left( \frac{(1-q) p^2}{\tilde p}\right)^k
 \eea
 This variance is divergent if $(1-q)p^2 \ge \tilde p$. In Barto and Sutton, they take $q=0.1, p=1$ and $\tilde p=0.5$.
