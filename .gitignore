@@ -1,0 +1,63 @@
+# Core auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Intermediate
+*.dvi
+*.xdv
+*-converted-to.*
+
+# Bibliography
+*.bbl
+*.bcf
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+# Build tool auxiliary
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+
+# hyperref
+*.brf
+
+# nomencl
+*.nlg
+*.nlo
+*.nls
+
+# listings
+*.lol
+
+# minted
+_minted*
+*.pyg
+
+# glossaries
+*.acn
+*.acr
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.lzo
+*.lzs
+
+# Editor / OS
+*.swp
+.DS_Store
