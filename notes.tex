@@ -519,17 +519,6 @@ Q_{n+1} &=& Q_n + \alpha [R_n - Q_n] \nn
 &=& (1-\alpha)^n Q_1 + \alpha \sum_{i=1}^n (1-\alpha)^{n-i} R_i
 \eea
 
-\section{Monte Carlo}
-
-\subsection{The idea}
-
-When we do not know the dynamics of the system (i.e. $p(s'|s,a)$ and/or $p(r|s,a)$ then we can sample whole episodes several times to get
-\be
-v_\pi(s), q_\pi(s,a)
-\ee 
-by starting off in state $s$ or in state $s$ and take action $a$ and then follow through till the end of the episode. In doing so we can take the first visit approach where we update the averages for a state or state action pair only for the first visit or we can do this for all the visits. Both converge but proving theorems is easier for the former.
-
-
 \section{Taking Averages For Monte Carlo Reinforcement Learning}
 
 \subsection{Ordinary Importance Sampling}
