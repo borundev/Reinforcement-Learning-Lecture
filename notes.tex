@@ -79,7 +79,7 @@
 
 Imagine a problem where we have an {\em agent} that interacts with an {\em environment} and {\em we} want it to achieve a goal without explicitly telling it what to do? 
 
-We could assign a {\em numerical return} to the outcomes with the largest value for the goal would like to agent to achieve and simply tweak the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the return.  
+We could assign a {\em numerical return} to the outcomes with the largest value for the goal we would like the agent to achieve and simply tweak the agent to take {\em actions} (out of the set of possible actions at any given time) so as to maximize the return.  
 
 The return itself could come from rewards sprinkled along the way (think stock market returns) or from a final reward at the last step (checkmate!). In practice, given a goal, one has to decide on numerical rewards and compose a final return from those rewards that is consistent with the goal.
 
@@ -152,7 +152,7 @@ So if the agent is about to decide which action to take at time $t$ they should 
 \be
 \sum_{k \ge 1} \mathbb E_\pi[R_{t+k}|S_t,A_t]
 \ee
-however if $k$ is unbounded then this function is unbounded. We thus define a stochastic reward 
+however if $k$ is unbounded then this function is unbounded. We thus define a stochastic return 
 \bea
 G_t &\coloneqq& \sum_{k=1}^\infty \gamma^{k-1} R_{t+k} \label{def:G} \nn
 &=& R_{t+1} + \gamma G_{t+1}
@@ -229,7 +229,7 @@ If these {\em were} to be known accurately, the agent can simply take action $A_
 However, easier said than done, there are two problems to be solved
 \begin{itemize}
 \item Actually find the correct values for $q_\pi(s,a)$
-\item Find the best $\pi_\star$ such that $\max_a q_{\pi_*}(s,a) \ge \max_a q_\pi(s,a)~~ \forall ~\pi,s$
+\item Find the best $\pi_\star$ such that $\max_a q_{\pi_\star}(s,a) \ge \max_a q_\pi(s,a)~~ \forall ~\pi,s$
 \end{itemize}
 We get for the optimal policy
 \bea
@@ -482,7 +482,7 @@ where $c$ is not a function of $A_t$.
 
 Suppose there is a process where one can choose among a set of actions $\{a\}$ that give rewards $R$ then it makes sense to take actions that maximize the reward
 \bea
-q_*(a) = \e{R|A=a}{\pi_*}
+q_*(a) = \mathbb E[R|A=a]
 \eea
 which is the expectation of the reward given the action chose is $a$.
 
@@ -676,7 +676,7 @@ Loop over episodes: \\
  \phantom{abcd} Using policy $b$ generate the sequence  $S_0,A_0, R_1,S_1,A_1 \dots S_{T-1}, A_{T-1},R_T,S_T$ \\
  \phantom{abcd} $G=0$ \\
   \phantom{abcd} $W=1$ \\
-  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$ while $W \ne 0$: \\
+  \phantom{abcd} For $t$ in $(T-1,T-2,\dots 0)$: \\
   \phantom{abcd}   \phantom{abcd}  $G = \gamma G + R_{t+1}$ \\
   \phantom{abcd}   \phantom{abcd}  $Q(S_t,A_t) = \frac{C(S_t,A_t) Q(S_t,A_t) +W G}{C(S_t,A_t)+1}$ \\
     \phantom{abcd}   \phantom{abcd}  $C(S_t,A_t) += 1$ \\
